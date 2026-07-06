@@ -29,6 +29,7 @@ export interface Station {
   codec: string;
   bitrate: number;
   lastcheckok: number;
+  lastchecktime: string;
   hls: number;
   geo_lat: number | null;
   geo_long: number | null;

@@ -1,24 +1,18 @@
-import { useState, useEffect } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, X, Volume2, VolumeX, Heart } from 'lucide-react';
 import { usePlayer } from '../contexts/PlayerContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useFavorites } from '../contexts/FavoritesContext';
-import { getFallbackArtwork } from '../lib/utils';
+import StationArtwork from './StationArtwork';
 
 export default function Player() {
   const { station, isPlaying, isBuffering, error, volume, togglePlay, stop, setVolume } = usePlayer();
   const { user } = useAuth();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
-  const [imgError, setImgError] = useState(false);
-
-  useEffect(() => {
-    setImgError(false);
-  }, [station?.stationuuid]);
 
   if (!station) return null;
 
-  const imageUrl = station.favicon && !imgError ? station.favicon : getFallbackArtwork(station);
   const favorite = isFavorite(station.stationuuid);
 
   const handleFavorite = async () => {
@@ -45,14 +39,7 @@ export default function Player() {
         )}
         <div className="max-w-5xl mx-auto px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-zinc-800">
-              <img
-                src={imageUrl}
-                alt={station.name}
-                className="w-full h-full object-cover"
-                onError={() => setImgError(true)}
-              />
-            </div>
+            <StationArtwork station={station} size="md" className="rounded-xl" />
 
             <div className="flex-1 min-w-0">
               <h4 className="text-sm font-semibold text-white truncate">{station.name}</h4>

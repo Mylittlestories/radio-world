@@ -33,12 +33,15 @@ export async function searchStations(params: {
   search?: string;
   uuid?: string;
   limit?: number;
+  offset?: number;
+  order?: 'clickcount' | 'votes' | 'name' | 'bitrate' | 'lastcheckok';
 }): Promise<Station[]> {
   const qs = new URLSearchParams();
   qs.set('hidebroken', 'true');
-  qs.set('order', 'clickcount');
+  qs.set('order', params.order || 'clickcount');
   qs.set('reverse', 'true');
   qs.set('limit', String(params.limit || 50));
+  if (params.offset) qs.set('offset', String(params.offset));
 
   if (params.uuid) {
     return fetchJson<Station[]>(`/json/stations/byuuid/${encodeURIComponent(params.uuid)}?${qs.toString()}`);
@@ -50,6 +53,30 @@ export async function searchStations(params: {
     if (params.state) qs.set('state', params.state);
   }
   return fetchJson<Station[]>(`/json/stations/search?${qs.toString()}`);
+}
+
+export async function getTopVoted(limit = 10): Promise<Station[]> {
+  return searchStations({ order: 'votes', limit });
+}
+
+export async function getMostPlayed(limit = 10): Promise<Station[]> {
+  return searchStations({ order: 'clickcount', limit });
+}
+
+export async function getByTag(tag: string, limit = 50, offset = 0): Promise<Station[]> {
+  const qs = new URLSearchParams();
+  qs.set('hidebroken', 'true');
+  qs.set('order', 'clickcount');
+  qs.set('reverse', 'true');
+  qs.set('limit', String(limit));
+  qs.set('offset', String(offset));
+  qs.set('tag', tag);
+  return fetchJson<Station[]>(`/json/stations/search?${qs.toString()}`);
+}
+
+export async function getTags(limit = 50): Promise<{ name: string; stationcount: number }[]> {
+  const data = await fetchJson<{ name: string; stationcount: number }[]>(`/json/tags?order=stationcount&reverse=true&limit=${limit}`);
+  return data.filter((t) => t.stationcount > 0);
 }
 
 export async function getStreamUrl(uuid: string): Promise<{ url: string; station: Station }> {

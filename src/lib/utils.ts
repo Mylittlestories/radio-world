@@ -27,13 +27,21 @@ export function getStationGradient(uuid: string) {
 
 export function getFallbackArtwork(station: Station) {
   const text = initials(station.name);
-  const bg = getStationGradient(station.stationuuid);
+  const hues = [340, 200, 260, 30, 160, 10, 280];
+  let hash = 0;
+  for (let i = 0; i < station.stationuuid.length; i++) {
+    hash = station.stationuuid.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h1 = hues[Math.abs(hash) % hues.length];
+  const h2 = (h1 + 40) % 360;
+  const c1 = `hsl(${h1} 70% 45%)`;
+  const c2 = `hsl(${h2} 70% 35%)`;
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
       <defs>
         <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:${bg.replace('linear-gradient(135deg, ', '').split(',')[0]}" />
-          <stop offset="100%" style="stop-color:${bg.replace(')', '').split(',')[1] || '#555'}" />
+          <stop offset="0%" stop-color="${c1}" />
+          <stop offset="100%" stop-color="${c2}" />
         </linearGradient>
       </defs>
       <rect width="200" height="200" fill="url(#g)" />

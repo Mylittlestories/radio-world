@@ -3,9 +3,12 @@ import { useParams, useLocation, Link } from 'react-router-dom';
 import { ChevronLeft, Radio } from 'lucide-react';
 import StationCard from '../components/StationCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import LoadMoreButton from '../components/LoadMoreButton';
 import { searchStations } from '../lib/radioBrowser';
 import { decodeCityParam } from '../lib/utils';
 import type { Station } from '../types';
+
+const PAGE_SIZE = 50;
 
 export default function City() {
   const { code, cityName: cityParam } = useParams<{ code: string; cityName: string }>();
@@ -13,14 +16,22 @@ export default function City() {
   const cityName = (location.state as { cityName?: string })?.cityName || decodeCityParam(cityParam || '');
   const countryName = (location.state as { countryName?: string })?.countryName || '';
   const [stations, setStations] = useState<Station[]>([]);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setStations([]);
+    setOffset(0);
+    setHasMore(true);
     const fetchStations = async () => {
+      setLoading(true);
       try {
-        const data = await searchStations({ countrycode: code, state: cityName, limit: 100 });
+        const data = await searchStations({ countrycode: code, state: cityName, limit: PAGE_SIZE, offset: 0 });
         setStations(data);
+        setHasMore(data.length === PAGE_SIZE);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Something went wrong');
       } finally {
@@ -29,6 +40,21 @@ export default function City() {
     };
     if (code && cityName) fetchStations();
   }, [code, cityName]);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const newOffset = offset + PAGE_SIZE;
+      const data = await searchStations({ countrycode: code, state: cityName, limit: PAGE_SIZE, offset: newOffset });
+      setStations((prev) => [...prev, ...data]);
+      setOffset(newOffset);
+      setHasMore(data.length === PAGE_SIZE);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   return (
     <div className="pb-40">
@@ -45,14 +71,14 @@ export default function City() {
             <div>
               <h1 className="text-xl font-bold text-white truncate">{cityName}</h1>
               <p className="text-xs text-zinc-400">
-                {loading ? 'Loading stations...' : `${stations.length} station${stations.length === 1 ? '' : 's'}`}
+                {loading ? 'Loading stations...' : `${stations.length} station${stations.length === 1 ? '' : 's'} loaded`}
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-4 py-6 space-y-4">
         {loading ? (
           <LoadingSpinner />
         ) : error ? (
@@ -64,11 +90,14 @@ export default function City() {
             <p className="text-sm text-zinc-400 mt-1">This city may not have any indexed stations right now.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {stations.map((station, i) => (
-              <StationCard key={station.stationuuid} station={station} index={i} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {stations.map((station, i) => (
+                <StationCard key={station.stationuuid} station={station} index={i} />
+              ))}
+            </div>
+            <LoadMoreButton onClick={loadMore} loading={loadingMore} hasMore={hasMore} />
+          </>
         )}
       </main>
     </div>

@@ -3,34 +3,47 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import StationCard from '../components/StationCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import LoadMoreButton from '../components/LoadMoreButton';
 import { searchStations } from '../lib/radioBrowser';
 import type { Station } from '../types';
+
+const PAGE_SIZE = 50;
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   const [query, setQuery] = useState(initialQuery);
   const [stations, setStations] = useState<Station[]>([]);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialQuery.trim()) {
-      performSearch(initialQuery.trim());
+      performSearch(initialQuery.trim(), 0);
     }
   }, []);
 
-  const performSearch = async (term: string) => {
-    setLoading(true);
+  const performSearch = async (term: string, startOffset: number) => {
+    if (startOffset === 0) setLoading(true);
     setError(null);
     try {
-      const data = await searchStations({ search: term, limit: 50 });
-      setStations(data);
+      const data = await searchStations({ search: term, limit: PAGE_SIZE, offset: startOffset });
+      if (startOffset === 0) {
+        setStations(data);
+      } else {
+        setStations((prev) => [...prev, ...data]);
+      }
+      setOffset(startOffset);
+      setHasMore(data.length === PAGE_SIZE);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -39,12 +52,20 @@ export default function SearchPage() {
     const term = query.trim();
     if (!term) return;
     setSearchParams({ q: term });
-    performSearch(term);
+    performSearch(term, 0);
+  };
+
+  const loadMore = () => {
+    const term = query.trim();
+    if (!term) return;
+    setLoadingMore(true);
+    performSearch(term, offset + PAGE_SIZE);
   };
 
   const clearSearch = () => {
     setQuery('');
     setStations([]);
+    setHasMore(true);
     setSearchParams({});
     inputRef.current?.focus();
   };
@@ -77,17 +98,20 @@ export default function SearchPage() {
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-4 py-6 space-y-4">
         {loading ? (
           <LoadingSpinner />
         ) : error ? (
           <div className="text-center py-12 text-red-400">{error}</div>
         ) : stations.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {stations.map((station, i) => (
-              <StationCard key={station.stationuuid} station={station} index={i} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {stations.map((station, i) => (
+                <StationCard key={station.stationuuid} station={station} index={i} />
+              ))}
+            </div>
+            <LoadMoreButton onClick={loadMore} loading={loadingMore} hasMore={hasMore} />
+          </>
         ) : query.trim() && !loading ? (
           <div className="text-center py-16">
             <Search className="w-12 h-12 text-zinc-600 mx-auto mb-3" />

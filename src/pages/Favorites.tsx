@@ -29,6 +29,7 @@ export default function Favorites() {
     codec: '',
     bitrate: 0,
     lastcheckok: 1,
+    lastchecktime: '',
     hls: 0,
     geo_lat: null,
     geo_long: null,

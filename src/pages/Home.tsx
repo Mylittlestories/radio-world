@@ -1,24 +1,36 @@
 import { useEffect, useState } from 'react';
-import { Search, Globe, TrendingUp } from 'lucide-react';
+import { Search, Globe, TrendingUp, Trophy, Radio, Headphones } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CountryCard from '../components/CountryCard';
 import StationCard from '../components/StationCard';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { getCountries, searchStations } from '../lib/radioBrowser';
+import { getCountries, searchStations, getMostPlayed, getTopVoted, getTags } from '../lib/radioBrowser';
 import type { Country, Station } from '../types';
 
 export default function Home() {
   const [countries, setCountries] = useState<Country[]>([]);
-  const [topStations, setTopStations] = useState<Station[]>([]);
+  const [trending, setTrending] = useState<Station[]>([]);
+  const [topVoted, setTopVoted] = useState<Station[]>([]);
+  const [mostPlayed, setMostPlayed] = useState<Station[]>([]);
+  const [tags, setTags] = useState<{ name: string; stationcount: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [cData, sData] = await Promise.all([getCountries(), searchStations({ limit: 6 })]);
+        const [cData, tData, vData, pData, tagData] = await Promise.all([
+          getCountries(),
+          searchStations({ limit: 6 }),
+          getTopVoted(6),
+          getMostPlayed(6),
+          getTags(12),
+        ]);
         setCountries(cData.slice(0, 24));
-        setTopStations(sData.slice(0, 6));
+        setTrending(tData.slice(0, 6));
+        setTopVoted(vData.slice(0, 6));
+        setMostPlayed(pData.slice(0, 6));
+        setTags(tagData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Something went wrong');
       } finally {
@@ -58,7 +70,7 @@ export default function Home() {
             Every station, everywhere.
           </h1>
           <p className="text-rose-100 text-base sm:text-lg max-w-xl mb-6">
-            Browse thousands of live radio stations from every country and city around the world.
+            Browse thousands of live radio stations from every country, city, and genre around the world.
           </p>
           <Link
             to="/search"
@@ -70,15 +82,64 @@ export default function Home() {
         </div>
       </section>
 
-      <main className="max-w-5xl mx-auto px-4 py-8 space-y-10">
-        {topStations.length > 0 && (
+      <main className="max-w-5xl mx-auto px-4 py-8 space-y-12">
+        {tags.length > 0 && (
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Headphones className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-lg font-bold text-white">Browse by genre</h2>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <Link
+                  key={tag.name}
+                  to={`/search?q=${encodeURIComponent(tag.name)}`}
+                  className="px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:border-rose-500/50 hover:text-white transition-colors"
+                >
+                  {tag.name}
+                  <span className="ml-1.5 text-zinc-500 text-xs">{tag.stationcount.toLocaleString()}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {trending.length > 0 && (
           <section>
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-5 h-5 text-rose-400" />
               <h2 className="text-lg font-bold text-white">Trending now</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {topStations.map((station, i) => (
+              {trending.map((station, i) => (
+                <StationCard key={station.stationuuid} station={station} index={i} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {mostPlayed.length > 0 && (
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Radio className="w-5 h-5 text-blue-400" />
+              <h2 className="text-lg font-bold text-white">Most played</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {mostPlayed.map((station, i) => (
+                <StationCard key={station.stationuuid} station={station} index={i} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {topVoted.length > 0 && (
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Trophy className="w-5 h-5 text-amber-400" />
+              <h2 className="text-lg font-bold text-white">Top voted</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {topVoted.map((station, i) => (
                 <StationCard key={station.stationuuid} station={station} index={i} />
               ))}
             </div>
